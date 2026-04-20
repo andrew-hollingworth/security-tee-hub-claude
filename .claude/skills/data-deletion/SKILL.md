@@ -63,7 +63,7 @@ Display a clear summary back to the user, for example:
 - `complianceMonitoring` → [Claude] Posts 3 Slack messages with cross-links
 - `infraVulnerabilityManagement`, `containerVulnerabilityManagement`, `hostVulnerabilityManagement` → [Claude] Creates 1 K9VULN ticket (VM board) if any are active
 - `codeSecurityScaStatic`, `codeSecurityScaRuntime` → [Claude] Creates 1 K9VULN ticket (SCA board) if any are active
-- `codeSecurityIac` → [Manual] Action not yet documented in runbook
+- `codeSecurityIac` → [Claude] Creates 1 K9VULN ticket (IaC board) + posts link to `#k9-iac-secrets-backroom`
 - `runtimeSecurity` → [Auto] No action needed
 - `ciem` → [Auto] No action needed
 - `securityMonitoring` → [Auto] No action needed (data auto-deletes after 90 days)
@@ -106,9 +106,28 @@ Data auto-deletes 90 days after ticket closes (closing happens within 24h of no 
 
 ---
 
-### `codeSecurityIac` — Action unknown
-This product is not covered by the current runbook. Warn the user:
-> ⚠️ `codeSecurityIac` is activated but the required action for this product is not yet documented in this skill. Please handle this manually and update the runbook.
+### `codeSecurityIac` — Create K9VULN ticket (IaC board) + Slack post
+
+Create a ticket in the **K9VULN** project using the Atlassian MCP.
+
+Fields:
+- **Title:** The summary of the SCRS ticket (reuse verbatim)
+- **Work Type:** Task
+- **Components:** Support
+- **Due Date:** deletion due date from Step 1, formatted as `MM/DD/YYYY`
+- **Linked work item:** this ticket "Blocks" `<SCRS_TICKET_URL>`
+- **Description:**
+  > Orgs `<ORG_ID>` [and `<CHILD_ORG_ID>` ...] have requested that all their data be deleted. Please confirm all related data for Code Security IaC has been deleted.
+
+Target board: `https://datadoghq.atlassian.net/jira/software/c/projects/K9VULN/boards/8574`
+
+After creating the ticket, confirm the link back to the SCRS ticket was established.
+
+Then post a single top-level message to `#k9-iac-secrets-backroom` with the K9VULN ticket link and the SCRS ticket link:
+
+> Orgs `<ORG_ID>` [and `<CHILD_ORG_ID>` ...] have requested that all their data be deleted. Please confirm all related data for Code Security IaC has been deleted. Tracking ticket: `<K9VULN_TICKET_URL>`. Original deletion request: `<SCRS_TICKET_URL>`.
+
+Retain the K9VULN ticket link — it will be included in the checklist comment posted in Step 4.
 
 ---
 
@@ -241,6 +260,7 @@ Deletion progress tracker for org `<ORG_ID>`:
 [ ] `complianceMonitoring` — #k9-ask-security-graph-and-prioritization: <permalink>
 [ ] `complianceMonitoring` — #k9-ask-cspm: <permalink>
 [ ] `codeSecurityScaRuntime` — [K9VULN-XXXXX](<link>) resolved
+[ ] `codeSecurityIac` — [K9VULN-XXXXX](<link>) resolved
 ```
 
 **If there are child orgs**, use a two-section format:
@@ -261,6 +281,7 @@ Deletion progress tracker:
 [ ] `complianceMonitoring` — #k9-ask-security-graph-and-prioritization: <permalink>
 [ ] `complianceMonitoring` — #k9-ask-cspm: <permalink>
 [ ] `codeSecurityScaRuntime` — [K9VULN-XXXXX](<link>) resolved
+[ ] `codeSecurityIac` — [K9VULN-XXXXX](<link>) resolved
 ```
 
 Rules:
@@ -274,15 +295,11 @@ Rules:
 
 Evaluate in priority order:
 
-**Priority 1 — Unknown action required → no status change**
-If `codeSecurityIac` was active:
-Do NOT transition the ticket. Note to the user that the ticket status has been left unchanged because the required action is undocumented. Proceed to Step 5.
-
-**Priority 2 — Engineering action needed → Engineering Triage**
+**Priority 1 — Engineering action needed → Engineering Triage**
 If any K9VULN ticket(s) were created, OR `complianceMonitoring` Slack messages were sent (regardless of whether `applicationSecurity` SQL deletion was also needed — once confirmed done it no longer blocks transition):
 Transition the SCRS ticket to **Engineering Triage** using the Atlassian MCP (`transitionJiraIssue`). Proceed to Step 5.
 
-**Priority 3 — No action needed → Done**
+**Priority 2 — No action needed → Done**
 Else (only auto-delete products were active, no tickets created and no Slack messages sent):
 Transition the SCRS ticket to **Done** using the Atlassian MCP (`transitionJiraIssue`). Skip Step 5 and proceed directly to Step 6.
 
